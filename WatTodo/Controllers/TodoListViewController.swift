@@ -11,21 +11,12 @@ import UIKit
 class TodoListViewController: UITableViewController {
 
     var itemArray = [Item]()
-    let defaults = UserDefaults.standard
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let item1 = Item("Study")
-        itemArray.append(item1)
-        let item2 = Item("Eat")
-        itemArray.append(item2)
-        let item3 = Item("Sleep")
-        itemArray.append(item3)
-        
-        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
-            itemArray = items
-        }
+        loadItems()
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -49,6 +40,7 @@ class TodoListViewController: UITableViewController {
         print(itemArray[indexPath.row].title)
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -72,11 +64,7 @@ class TodoListViewController: UITableViewController {
                 let newItem = Item(textField.text!)
                 self.itemArray.append(newItem)
                 
-                // add the new array to user defaults for persistent storage
-                self.defaults.set(self.itemArray, forKey: "TodoListArray")
-                
-                // reload the tableView so it reflects the newly added item
-                self.tableView.reloadData()
+                self.saveItems()
             }
         }
         alert.addTextField { (alertTextField) in
@@ -85,6 +73,36 @@ class TodoListViewController: UITableViewController {
         }
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
+    }
+    
+    //MARK - Model Manipulation Methods
+    
+    func saveItems() {
+        // add the new array to user defaults for persistent storage
+        let encoder = PropertyListEncoder()
+        
+        do{
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        } catch {
+            print("error encoding item array, \(error)")
+        }
+        
+        // reload the tableView so it reflects the newly added item
+        tableView.reloadData()
+    }
+    
+    func loadItems() {
+        do{
+            if let data = try? Data(contentsOf: dataFilePath!) {
+                let decoder = PropertyListDecoder()
+                do {
+                    itemArray = try decoder.decode([Item].self, from: data)
+                } catch {
+                    print("error decoding item array, \(error)")
+                }
+            }
+        }
     }
 }
 
